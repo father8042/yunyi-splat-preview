@@ -1,0 +1,6 @@
+# Big Sur coast splat is over GitHub's 100MB limit.
+# The Pages workflow downloads it into the artifact; never commit it.
+assets/splats/*.sog
+assets/splats/*.spz
+assets/splats/*.ply
+assets/splats/*.splat

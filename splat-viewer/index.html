@@ -3,19 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="云逸 — Gaussian Splatting 英雄区脚手架" />
-  <title>云逸 · Splat Viewer</title>
+  <meta name="description" content="云逸 — Big Sur 海岸。先看静帧，再进入可拖动的 Gaussian Splat。" />
+  <title>云逸 · 海岸</title>
   <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  <link rel="preload" as="image" href="../assets/coast-still.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       --ink: #f4f0e8;
-      --ink-dim: rgba(244, 240, 232, 0.55);
-      --ink-mute: rgba(244, 240, 232, 0.28);
-      --line: rgba(244, 240, 232, 0.14);
-      --panel: rgba(12, 14, 18, 0.42);
+      --ink-dim: rgba(244, 240, 232, 0.72);
+      --ink-mute: rgba(244, 240, 232, 0.48);
       --serif: "Noto Serif SC", "Cormorant Garamond", serif;
       --sans: "Noto Sans SC", system-ui, sans-serif;
     }
@@ -23,7 +22,7 @@
     html, body {
       margin: 0;
       height: 100%;
-      background: #0a0c10;
+      background: #8ea0ad;
       color: var(--ink);
       font-family: var(--sans);
       font-weight: 300;
@@ -39,15 +38,28 @@
       width: 100%;
       height: 100%;
       touch-action: none;
+      background: #8ea0ad;
     }
+    #still {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 1.15s ease;
+    }
+    #app.is-live #still { opacity: 0; }
     .vignette {
       pointer-events: none;
       position: absolute;
       inset: 0;
+      z-index: 4;
       background:
-        radial-gradient(ellipse 75% 65% at 50% 45%, transparent 40%, rgba(0,0,0,0.55) 100%),
-        linear-gradient(180deg, rgba(0,0,0,0.35) 0%, transparent 22%, transparent 72%, rgba(0,0,0,0.5) 100%);
-      z-index: 2;
+        linear-gradient(180deg, rgba(10, 14, 18, 0.28) 0%, transparent 24%, transparent 62%, rgba(10, 14, 18, 0.45) 100%);
     }
     header.hud-top {
       position: absolute;
@@ -57,8 +69,7 @@
       z-index: 5;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 1.25rem 1.75rem;
+      padding: max(1.15rem, env(safe-area-inset-top)) 1.5rem 0;
       pointer-events: none;
     }
     .logo {
@@ -68,158 +79,117 @@
       gap: 0.55rem;
       text-decoration: none;
       color: var(--ink);
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
     }
     .logo-mark {
       width: 7px;
       height: 7px;
       border-radius: 50%;
       background: var(--ink);
-      opacity: 0.85;
-      box-shadow: 0 0 12px rgba(244, 240, 232, 0.35);
+      opacity: 0.9;
     }
     .logo-text {
       font-family: var(--serif);
-      font-size: 1.15rem;
-      letter-spacing: 0.28em;
+      font-size: 1.05rem;
+      letter-spacing: 0.32em;
       font-weight: 500;
-    }
-    .hud-nav {
-      pointer-events: auto;
-      display: flex;
-      gap: 1.25rem;
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
-      text-transform: none;
-    }
-    .hud-nav a {
-      color: var(--ink-dim);
-      text-decoration: none;
-      transition: color 0.25s ease;
-    }
-    .hud-nav a:hover,
-    .hud-nav a.is-active {
-      color: var(--ink);
     }
     .hero-copy {
       position: absolute;
-      left: 1.75rem;
-      bottom: 5.5rem;
+      left: 1.5rem;
+      bottom: calc(6.4rem + env(safe-area-inset-bottom));
       z-index: 5;
-      max-width: min(28rem, 88vw);
       pointer-events: none;
+      text-shadow: 0 1px 16px rgba(0, 0, 0, 0.4);
     }
-    .stage-kicker {
-      font-size: 0.68rem;
-      letter-spacing: 0.32em;
+    .kicker {
+      font-size: 0.66rem;
+      letter-spacing: 0.38em;
       color: var(--ink-dim);
-      margin-bottom: 0.65rem;
-      text-transform: uppercase;
+      margin-bottom: 0.45rem;
     }
-    .stage-title {
+    h1 {
       font-family: var(--serif);
       font-weight: 500;
-      font-size: clamp(1.85rem, 4.2vw, 2.75rem);
-      line-height: 1.25;
-      letter-spacing: 0.06em;
-      margin: 0 0 0.75rem;
-    }
-    .stage-sub {
+      font-size: clamp(2.4rem, 8vw, 4.2rem);
+      line-height: 1;
+      letter-spacing: 0.18em;
       margin: 0;
-      font-size: 0.88rem;
-      line-height: 1.7;
-      color: var(--ink-dim);
-      letter-spacing: 0.04em;
     }
+    .brand {
+      margin: 0.45rem 0 0;
+      font-family: var(--serif);
+      font-size: 1rem;
+      letter-spacing: 0.42em;
+      color: var(--ink-dim);
+    }
+    .credit {
+      margin: 1.15rem 0 0;
+      max-width: 18rem;
+      font-size: 0.62rem;
+      letter-spacing: 0.04em;
+      line-height: 1.5;
+      color: var(--ink-mute);
+      pointer-events: auto;
+    }
+    .credit a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .credit a:hover { color: var(--ink); }
     .scroll-hint {
       position: absolute;
-      bottom: 1.6rem;
+      bottom: calc(1.35rem + env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
       z-index: 5;
-      font-size: 0.65rem;
+      font-size: 0.62rem;
       letter-spacing: 0.28em;
       color: var(--ink-mute);
       pointer-events: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.45rem;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      transition: opacity 0.6s ease;
     }
-    .scroll-hint::after {
-      content: "";
-      width: 1px;
-      height: 28px;
-      background: linear-gradient(180deg, var(--ink-mute), transparent);
-    }
-    .stage-pills {
-      position: absolute;
-      right: 1.75rem;
-      bottom: 5.5rem;
-      z-index: 5;
-      display: flex;
-      flex-direction: column;
-      gap: 0.45rem;
-      pointer-events: auto;
-    }
-    .stage-pills button {
-      appearance: none;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: var(--ink-dim);
-      font-family: var(--sans);
-      font-size: 0.7rem;
-      letter-spacing: 0.2em;
-      padding: 0.55rem 0.9rem;
-      border-radius: 999px;
-      cursor: pointer;
-      backdrop-filter: blur(10px);
-      transition: color 0.2s, border-color 0.2s, background 0.2s;
-    }
-    .stage-pills button:hover,
-    .stage-pills button.is-active {
-      color: var(--ink);
-      border-color: rgba(244, 240, 232, 0.4);
-      background: rgba(18, 20, 26, 0.65);
-    }
+    #app.is-live .scroll-hint { opacity: 1; }
     #status {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      left: 1.5rem;
+      right: 1.5rem;
+      bottom: calc(3.4rem + env(safe-area-inset-bottom));
       z-index: 6;
-      text-align: center;
       pointer-events: none;
-      transition: opacity 0.5s ease;
-    }
-    #status.hidden { opacity: 0; }
-    #status .label {
-      font-family: var(--serif);
-      letter-spacing: 0.2em;
-      font-size: 0.95rem;
-      margin-bottom: 0.5rem;
-    }
-    #status .detail {
       font-size: 0.72rem;
-      letter-spacing: 0.12em;
-      color: var(--ink-dim);
-      max-width: 22rem;
-      line-height: 1.6;
+      letter-spacing: 0.16em;
+      color: var(--ink);
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
     }
-    .error #status .label { color: #e8c4b8; }
+    #app.is-live #status {
+      opacity: 0;
+    }
+    .bar {
+      margin-top: 0.55rem;
+      width: 7.5rem;
+      height: 1px;
+      background: rgba(244, 240, 232, 0.28);
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 100%;
+      background: rgba(244, 240, 232, 0.9);
+      transform: scaleX(0);
+      transform-origin: left center;
+    }
+    #app.is-fallback .bar,
+    #app.is-live .bar { display: none; }
     @media (max-width: 720px) {
-      .hud-nav { display: none; }
-      .stage-pills {
-        right: 1rem;
-        bottom: 4.5rem;
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        max-width: 55vw;
-      }
-      .hero-copy {
-        left: 1rem;
-        bottom: 7.5rem;
-      }
+      .hero-copy { left: 1.1rem; bottom: calc(5.6rem + env(safe-area-inset-bottom)); }
+      #status { left: 1.1rem; }
+      .scroll-hint { letter-spacing: 0.18em; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #still, .scroll-hint { transition: none; }
     }
   </style>
   <script type="importmap">
@@ -235,6 +205,7 @@
 <body>
   <div id="app">
     <canvas id="c"></canvas>
+    <img id="still" src="../assets/coast-still.jpg" width="1920" height="1080" alt="Big Sur 海岸悬崖" />
     <div class="vignette" aria-hidden="true"></div>
 
     <header class="hud-top">
@@ -242,31 +213,25 @@
         <span class="logo-mark" aria-hidden="true"></span>
         <span class="logo-text">云逸</span>
       </a>
-      <nav class="hud-nav" aria-label="阶段">
-        <a href="?stage=mountain" data-stage="mountain">雪峰</a>
-        <a href="?stage=meadow" data-stage="meadow">草甸</a>
-        <a href="?stage=ocean" data-stage="ocean">海际</a>
-      </nav>
     </header>
 
-    <div id="status" role="status">
-      <div class="label">载入光景</div>
-      <div class="detail" id="status-detail">正在准备 Gaussian Splatting…</div>
-    </div>
-
     <div class="hero-copy">
-      <div class="stage-kicker" id="stage-kicker">STAGE · 雪峰</div>
-      <h1 class="stage-title" id="stage-title">山脊之上</h1>
-      <p class="stage-sub" id="stage-sub">真实捕捉的体积光影。滚动或点选阶段，预览三程叙事占位。</p>
+      <div class="kicker">BIG SUR</div>
+      <h1>海岸</h1>
+      <p class="brand">云逸</p>
+      <footer class="credit">
+        <a href="https://huggingface.co/datasets/Jamesbass/bigsur-360-colmap" target="_blank" rel="noopener noreferrer">Jamesbass · bigsur-360-colmap</a>
+        ·
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>
+      </footer>
     </div>
 
-    <div class="stage-pills" role="tablist" aria-label="切换阶段">
-      <button type="button" data-stage="mountain" class="is-active">雪峰</button>
-      <button type="button" data-stage="meadow">草甸</button>
-      <button type="button" data-stage="ocean">海际</button>
+    <div id="status" role="status" aria-live="polite">
+      <span id="status-line">光景载入中</span>
+      <div class="bar" aria-hidden="true"><span id="bar-fill"></span></div>
     </div>
 
-    <div class="scroll-hint" aria-hidden="true">SCROLL · 探索</div>
+    <div class="scroll-hint">SCROLL / 拖动探索</div>
   </div>
   <script type="module" src="./main.js"></script>
 </body>

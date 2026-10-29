@@ -20,6 +20,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,26 +28,29 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
-          # Creates the Pages site (Actions source) when it does not exist yet.
-          # Requires a token that can administer the repository; the default
-          # GITHUB_TOKEN is tried first.
           enablement: true
 
-      - name: Expand splat symlinks
+      - name: Download Big Sur coast splat
         run: |
-          # Pages artifacts cannot contain symlinks. Expand aliases in the
-          # runner workspace only; git still stores them as links.
-          cd assets/splats
-          for f in mountain.sog coast.sog ocean-waterfall.sog; do
-            if [ -L "$f" ]; then
-              target=$(readlink "$f")
-              rm "$f"
-              cp -a "$target" "$f"
-            fi
-          done
-          if find . -type l | grep -q .; then
-            echo "symlinks remain in splat assets" >&2
-            find . -type l
+          set -euo pipefail
+          mkdir -p assets/splats
+          # Unlicensed waterfall placeholder must not ship, even as a symlink.
+          rm -f assets/splats/waterfall.sog \
+                assets/splats/mountain.sog \
+                assets/splats/ocean-waterfall.sog \
+                assets/splats/coast.sog
+          curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+            --connect-timeout 20 --max-time 600 \
+            -o assets/splats/coast.sog \
+            "https://huggingface.co/datasets/Jamesbass/bigsur-360-colmap/resolve/main/bigsur_v2_full_quality.sog"
+          size=$(stat -c%s assets/splats/coast.sog)
+          echo "coast.sog bytes: ${size}"
+          if [ "${size}" -lt 100000000 ]; then
+            echo "coast.sog looks truncated or is not the full-quality splat" >&2
+            exit 1
+          fi
+          if [ -e assets/splats/waterfall.sog ]; then
+            echo "refusing to publish waterfall.sog" >&2
             exit 1
           fi
 
